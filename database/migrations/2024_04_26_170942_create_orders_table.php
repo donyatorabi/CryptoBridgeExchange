@@ -20,6 +20,10 @@ return new class extends Migration
             $table->enum('status', array_values(Order::STATUSES))
                 ->default(Order::STATUSES['PENDING']);
             $table->timestamps();
+
+            $table->foreign('src_coin_id')->references('id')->on('coins');
+            $table->foreign('dest_coin_id')->references('id')->on('coins');
+
         });
     }
 

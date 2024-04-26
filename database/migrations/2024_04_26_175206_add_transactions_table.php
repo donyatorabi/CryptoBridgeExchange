@@ -13,6 +13,8 @@ return new class extends Migration
             $table->unsignedBigInteger('order_id');
             $table->unsignedBigInteger('amount')->comment('in rials');
             $table->timestamps();
+
+            $table->foreign('order_id')->references('id')->on('orders');
         });
     }
 
