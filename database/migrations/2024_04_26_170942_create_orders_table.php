@@ -11,9 +11,11 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
+            $table->string('user_email', 255);
             $table->unsignedBigInteger('src_coin_id');
             $table->unsignedBigInteger('dest_coin_id');
-            $table->bigInteger('amount');
+            $table->unsignedInteger('amount');
+            $table->unsignedBigInteger('src_coin_price');
             $table->unsignedBigInteger('dest_coin_price')->nullable();
             $table->enum('status', array_values(Order::STATUSES))
                 ->default(Order::STATUSES['PENDING']);
