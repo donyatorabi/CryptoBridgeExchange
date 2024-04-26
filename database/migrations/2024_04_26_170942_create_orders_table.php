@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('user_email', 255);
             $table->unsignedBigInteger('src_coin_id');
             $table->unsignedBigInteger('dest_coin_id');
-            $table->unsignedInteger('amount');
+            $table->unsignedInteger('quantity')->default(1);
             $table->unsignedBigInteger('src_coin_price');
             $table->unsignedBigInteger('dest_coin_price')->nullable();
             $table->enum('status', array_values(Order::STATUSES))

@@ -6,5 +6,4 @@ use App\Modules\BaseRepository;
 
 class OrderRepository extends BaseRepository
 {
-
 }
