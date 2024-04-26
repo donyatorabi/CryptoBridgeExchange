@@ -14,16 +14,16 @@ use Symfony\Component\HttpFoundation\Response;
 class OrderService
 {
     private TransactionService $transactionService;
+    private OrderRepository $orderRepository;
 
-    public function __construct(readonly public OrderRepository $orderRepository)
+    public function __construct()
     {
+        $this->orderRepository = app(OrderRepository::class);
         $this->transactionService = app(TransactionService::class);
     }
 
     public function store(array $data): void
     {
-        $data = $this->_prepareDataForInsert($data);
-
         DB::beginTransaction();
         try {
             // here I am calculating destination coin price
@@ -33,6 +33,8 @@ class OrderService
 
             // throw exception if destination code is not found in cache
             $this->checkDestCoinPrice($destCoinPrice);
+
+            $data = $this->_prepareDataForInsert($data);
 
             $order = $this->orderRepository->create(data: $data);
             $this->transactionService->create([
