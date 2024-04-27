@@ -4,6 +4,7 @@ namespace App\Modules\Acc\Services;
 
 use App\Modules\Acc\Models\Transaction;
 use App\Modules\Acc\Repositories\TransactionRepository;
+use Illuminate\Database\Eloquent\Model;
 
 class TransactionService
 {
@@ -14,8 +15,8 @@ class TransactionService
         $this->transactionRepository = app(TransactionRepository::class);
     }
 
-    public function create(array $data)
+    public function create(array $data): ?Model
     {
-        Transaction::query()->create($data);
+        return Transaction::query()->create($data);
     }
 }

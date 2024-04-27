@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::table('transactions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('order_id');
+            $table->string('tracker_id');
             $table->unsignedBigInteger('amount')->comment('in rials');
             $table->timestamps();
 

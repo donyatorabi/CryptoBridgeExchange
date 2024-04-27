@@ -9,5 +9,6 @@ class Transaction extends Model
     protected $fillable = [
         'order_id',
         'amount',
+        'tracker_id',
     ];
 }

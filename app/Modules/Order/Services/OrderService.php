@@ -8,6 +8,7 @@ use App\Modules\Order\Exceptions\ApiOrderErrorException;
 use App\Modules\Order\Repositories\OrderRepository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use JetBrains\PhpStorm\ArrayShape;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,7 +23,7 @@ class OrderService
         $this->transactionService = app(TransactionService::class);
     }
 
-    public function store(array $data): void
+    public function store(array $data): ?string
     {
         DB::beginTransaction();
         try {
@@ -37,12 +38,15 @@ class OrderService
             $data = $this->_prepareDataForInsert($data);
 
             $order = $this->orderRepository->create(data: $data);
-            $this->transactionService->create([
+            $transaction = $this->transactionService->create([
                 'order_id' => $order->id,
                 'amount' => $destCoinPrice * $order->quantity,
+                'tracker_id' => $this->createTrackerId()
             ]);
 
             DB::commit();
+
+            return $transaction->tracker_id;
         } catch (\Exception $exception) {
             DB::rollBack();
             logger()->error('an error occurred in creating an order: ' . $exception->getMessage());
@@ -94,5 +98,10 @@ class OrderService
             messages: [__('error-occurred-in-creating-an-order')]);
 
         throw new ApiOrderErrorException('', 0, null, $baseResponse);
+    }
+
+    private function createTrackerId(): string
+    {
+        return Str::random(1) . rand(10000, 99999);
     }
 }
