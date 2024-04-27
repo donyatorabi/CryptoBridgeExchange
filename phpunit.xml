@@ -11,6 +11,9 @@
         <testsuite name="Order-Unit">
             <directory>app/Modules/Order/Tests/Unit</directory>
         </testsuite>
+        <testsuite name="Order-Feature">
+            <directory>app/Modules/Order/Tests/Feature</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

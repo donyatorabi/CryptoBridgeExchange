@@ -3,12 +3,13 @@
 namespace App\Modules\Order\Services;
 
 use App\DTOs\BaseResponseDto;
+use App\Exceptions\ApiErrorException;
 use App\Modules\Acc\Services\TransactionService;
 use App\Modules\Coin\Jobs\UpdateCoinsJob;
 use App\Modules\Coin\Models\Coin;
-use App\Modules\Order\Exceptions\ApiOrderErrorException;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Repositories\OrderRepository;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,14 +34,14 @@ class OrderService
         try {
             // here I am calculating destination coin price
             if (! Cache::has('coins')) {
-                dispatch_sync(new UpdateCoinsJob());
+                $this->coinsNotFound();
             }
 
             $this->checkSrcCoinPrice($data['src_coin_id'], $data['price']);
 
             $destCoinPrice = $this->getDestCoinPrice($data['dest_coin_id']);
 
-            // throw exception if destination code is not found in cache
+            // throw exception if destination code is not found
             $this->checkDestCoinPrice($destCoinPrice);
 
             $data['dest_coin_price'] = $destCoinPrice;
@@ -60,8 +61,13 @@ class OrderService
             DB::rollBack();
             logger()->error('an error occurred in creating an order: '.$exception->getMessage());
 
-            $this->throwException($exception->responseDto->messages);
+            $this->throwException($exception->getMessage());
         }
+    }
+
+    private function coinsNotFound()
+    {
+        throw new \Exception(__('orders.destination-coin-not-found'), Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 
     #[ArrayShape(['src_coin_id' => 'integer',
@@ -92,23 +98,18 @@ class OrderService
     private function checkDestCoinPrice(?int $destCoinPrice): void
     {
         if (! $destCoinPrice) {
-            $baseResponse = new BaseResponseDto(
-                status: BaseResponseDto::FAILED,
-                code: Response::HTTP_INTERNAL_SERVER_ERROR,
-                messages: [__('orders.error-in-fetching-destination-coin-price')]);
-
-            throw new ApiOrderErrorException('', 0, null, $baseResponse);
+            throw new ApiErrorException(__('orders.error-in-fetching-destination-coin-price'), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    private function throwException(array $errorMessages = [])
+    private function throwException(string $errorMessages = null)
     {
         $baseResponse = new BaseResponseDto(
             status: BaseResponseDto::FAILED,
             code: Response::HTTP_INTERNAL_SERVER_ERROR,
-            messages: [implode(', ', $errorMessages) ?? __('orders.error-occurred-in-creating-an-order')]);
+            messages: [ $errorMessages ?? __('orders.error-occurred-in-creating-an-order')]);
 
-        throw new ApiOrderErrorException('', 0, null, $baseResponse);
+        throw new ApiErrorException('', 0, null, $baseResponse);
     }
 
     private function createTrackerId(): string
@@ -121,12 +122,7 @@ class OrderService
         $srcCoin = Coin::query()->find($srcCoinId);
 
         if ($srcCoin->price != $srcCoinPrice) {
-            $baseResponse = new BaseResponseDto(
-                status: BaseResponseDto::FAILED,
-                code: Response::HTTP_INTERNAL_SERVER_ERROR,
-                messages: [__('orders.coin-price-has-changed')]);
-
-            throw new ApiOrderErrorException('', 0, null, $baseResponse);
+            throw new Exception(__('orders.coin-price-has-changed'), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -140,7 +136,7 @@ class OrderService
                 code: Response::HTTP_INTERNAL_SERVER_ERROR,
                 messages: [__('orders.tracker-id-doesnt-exist')]);
 
-            throw new ApiOrderErrorException('', 0, null, $baseResponse);
+            throw new ApiErrorException('', 0, null, $baseResponse);
         }
 
         return $data;

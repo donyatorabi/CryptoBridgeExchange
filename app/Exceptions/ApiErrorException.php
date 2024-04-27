@@ -1,12 +1,14 @@
 <?php
 
-namespace App\Modules\Order\Exceptions;
+namespace App\Exceptions;
 
 use App\DTOs\BaseResponseDto;
 use Exception;
 use Throwable;
 
-class ApiOrderErrorException extends Exception
+use function response;
+
+class ApiErrorException extends Exception
 {
     public function __construct(string $message = '', int $code = 0, ?Throwable $previous = null, public ?BaseResponseDto $responseDto = null)
     {

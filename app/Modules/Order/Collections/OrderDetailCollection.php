@@ -3,9 +3,9 @@
 namespace App\Modules\Order\Collections;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Resources\Json\ResourceCollection;
 
-class OrderDetailCollection extends JsonResource
+class OrderDetailCollection extends ResourceCollection
 {
     /**
      * Transform the resource into an array.
@@ -16,12 +16,12 @@ class OrderDetailCollection extends JsonResource
     public function toArray($request)
     {
         return [
-            'srcCoin' => $this->srcCoin->name_en,
-            'destCoin' => $this->destCoin->name_en,
-            'quantity' => $this->order->quantity,
-            'srcCoinPrice' => $this->order->src_coin_price,
-            'destCoinPrice' => $this->order->dest_coin_price,
+            'srcCoin' => $this->collection->get('order')['src_coin']['name_en'],
+            'srcCoinPrice' => $this->collection->get('order')['src_coin']['price'],
+            'destCoin' => $this->collection->get('order')['dest_coin']['name_en'],
+            'destCoinPrice' => $this->collection->get('order')['dest_coin']['price'],
+            'quantity' => $this->collection->get('order')['quantity'],
+            'email' => $this->collection->get('order')['user_email'],
         ];
     }
-
 }

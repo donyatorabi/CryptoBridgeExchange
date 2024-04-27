@@ -4,12 +4,15 @@ namespace App\Modules\Order\Models;
 
 use App\Modules\Acc\Models\Transaction;
 use App\Modules\Coin\Models\Coin;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Order extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_email',
         'src_coin_price',

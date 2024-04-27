@@ -34,6 +34,6 @@ class OrderController extends Controller
     {
         $data = $this->orderService->getOrderByTrackerId(trackerId: $trackerId);
 
-        return OrderDetailCollection::collection($data);
+        return new OrderDetailCollection($data);
     }
 }
