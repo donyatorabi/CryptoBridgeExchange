@@ -3,6 +3,7 @@
 namespace App\Modules\Order\Controllers;
 
 use App\DTOs\BaseResponseDto;
+use App\Modules\Order\Collections\OrderDetailCollection;
 use App\Modules\Order\Requests\OrderRequest;
 use App\Modules\Order\Services\OrderService;
 use Illuminate\Http\JsonResponse;
@@ -27,5 +28,12 @@ class OrderController extends Controller
             'code' => Response::HTTP_OK,
             'tracker_id' => $trackerId,
         ]);
+    }
+
+    public function get(string $trackerId)
+    {
+        $data = $this->orderService->getOrderByTrackerId(trackerId: $trackerId);
+
+        return OrderDetailCollection::collection($data);
     }
 }

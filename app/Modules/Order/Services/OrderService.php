@@ -44,7 +44,7 @@ class OrderService
             $this->checkDestCoinPrice($destCoinPrice);
 
             $data['dest_coin_price'] = $destCoinPrice;
-            $data = $this->_prepareDataForInsert($data);
+            $data = $this->prepareDataForInsert($data);
 
             $order = $this->orderRepository->create(data: $data);
             $transaction = $this->transactionService->create([
@@ -71,7 +71,7 @@ class OrderService
         'dest_coin_price' => 'integer',
         'status' => 'string',
         'quantity' => 'integer'])]
-    private function _prepareDataForInsert(array $data): array
+    private function prepareDataForInsert(array $data): array
     {
         return [
             'src_coin_id' => $data['src_coin_id'],
@@ -113,7 +113,7 @@ class OrderService
 
     private function createTrackerId(): string
     {
-        return Str::random(1).rand(10000, 99999);
+        return Str::uuid();
     }
 
     private function checkSrcCoinPrice(int $srcCoinId, int $srcCoinPrice)
@@ -128,5 +128,21 @@ class OrderService
 
             throw new ApiOrderErrorException('', 0, null, $baseResponse);
         }
+    }
+
+    public function getOrderByTrackerId(string $trackerId): array
+    {
+        $data = $this->orderRepository->getByTrackerId(trackerId: $trackerId);
+
+        if (!$data) {
+            $baseResponse = new BaseResponseDto(
+                status: BaseResponseDto::FAILED,
+                code: Response::HTTP_INTERNAL_SERVER_ERROR,
+                messages: [__('orders.tracker-id-doesnt-exist')]);
+
+            throw new ApiOrderErrorException('', 0, null, $baseResponse);
+        }
+
+        return $data;
     }
 }
