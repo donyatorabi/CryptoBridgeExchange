@@ -12,7 +12,7 @@ class TransactionService
 
     public function __construct()
     {
-        $this->transactionRepository = app(TransactionRepository::class);
+        $this->transactionRepository = app(TransactionRepository::class, ['model' => app(Transaction::class)]);
     }
 
     public function create(array $data): ?Model

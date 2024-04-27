@@ -23,7 +23,7 @@ class OrderServiceTest extends TestCase
             'src_coin_id',
             'dest_coin_id',
             'email',
-            'price'
+            'price',
         ]);
 
         $this->expectExceptionMessage('خطا در گرفتن قیمت ارز مقصد!');

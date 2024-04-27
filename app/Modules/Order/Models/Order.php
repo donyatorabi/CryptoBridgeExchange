@@ -11,7 +11,7 @@ class Order extends Model
         'src_coin_price',
         'src_coin_id',
         'dest_coin_id',
-        'amount',
+        'quantity',
         'dest_coin_price',
         'status',
     ];
@@ -19,6 +19,6 @@ class Order extends Model
     const STATUSES = [
         'PENDING' => 'PENDING',
         'REJECTED' => 'REJECTED',
-        'SUCCEEDED' => 'SUCCEEDED',
+        'ACCEPTED' => 'ACCEPTED',
     ];
 }

@@ -4,7 +4,10 @@ namespace App\Modules\Order\Services;
 
 use App\DTOs\BaseResponseDto;
 use App\Modules\Acc\Services\TransactionService;
+use App\Modules\Coin\Jobs\UpdateCoinsJob;
+use App\Modules\Coin\Models\Coin;
 use App\Modules\Order\Exceptions\ApiOrderErrorException;
+use App\Modules\Order\Models\Order;
 use App\Modules\Order\Repositories\OrderRepository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -15,11 +18,12 @@ use Symfony\Component\HttpFoundation\Response;
 class OrderService
 {
     private TransactionService $transactionService;
+
     private OrderRepository $orderRepository;
 
     public function __construct()
     {
-        $this->orderRepository = app(OrderRepository::class);
+        $this->orderRepository = app(OrderRepository::class, ['model' => app(Order::class)]);
         $this->transactionService = app(TransactionService::class);
     }
 
@@ -28,20 +32,25 @@ class OrderService
         DB::beginTransaction();
         try {
             // here I am calculating destination coin price
-            $coins = Cache::get('coins');
-            $destCoinPrice = 0;
-            $destCoinPrice = $this->getDestCoinPrice($coins, $data['dest_coin_id'], $destCoinPrice);
+            if (! Cache::has('coins')) {
+                dispatch_sync(new UpdateCoinsJob());
+            }
+
+            $this->checkSrcCoinPrice($data['src_coin_id'], $data['price']);
+
+            $destCoinPrice = $this->getDestCoinPrice($data['dest_coin_id']);
 
             // throw exception if destination code is not found in cache
             $this->checkDestCoinPrice($destCoinPrice);
 
+            $data['dest_coin_price'] = $destCoinPrice;
             $data = $this->_prepareDataForInsert($data);
 
             $order = $this->orderRepository->create(data: $data);
             $transaction = $this->transactionService->create([
                 'order_id' => $order->id,
                 'amount' => $destCoinPrice * $order->quantity,
-                'tracker_id' => $this->createTrackerId()
+                'tracker_id' => $this->createTrackerId(),
             ]);
 
             DB::commit();
@@ -49,13 +58,19 @@ class OrderService
             return $transaction->tracker_id;
         } catch (\Exception $exception) {
             DB::rollBack();
-            logger()->error('an error occurred in creating an order: ' . $exception->getMessage());
+            logger()->error('an error occurred in creating an order: '.$exception->getMessage());
 
-            $this->throwException();
+            $this->throwException($exception->responseDto->messages);
         }
     }
 
-    #[ArrayShape(['src_coin_id' => 'integer', 'dest_coin_id' => 'integer', 'user_email' => 'string', 'src_coin_price' => 'integer'])]
+    #[ArrayShape(['src_coin_id' => 'integer',
+        'dest_coin_id' => 'integer',
+        'user_email' => 'string',
+        'src_coin_price' => 'integer',
+        'dest_coin_price' => 'integer',
+        'status' => 'string',
+        'quantity' => 'integer'])]
     private function _prepareDataForInsert(array $data): array
     {
         return [
@@ -63,45 +78,55 @@ class OrderService
             'dest_coin_id' => $data['dest_coin_id'],
             'user_email' => $data['email'],
             'src_coin_price' => $data['price'],
+            'dest_coin_price' => $data['dest_coin_price'],
+            'status' => Order::STATUSES['ACCEPTED'],
+            'quantity' => $data['quantity'] ?? 1,
         ];
     }
 
-    private function getDestCoinPrice(mixed $coins, $dest_coin_id, mixed $destCoinPrice): mixed
+    private function getDestCoinPrice(int $destCoinId): ?int
     {
-        foreach ($coins as $coin) {
-            if ($coin['name_en'] === $dest_coin_id) {
-                $destCoinPrice = $coin['price'];
-                break; // Exit the loop since we found the destination coin price
-            }
-        }
-        return $destCoinPrice;
+        return Coin::query()->find($destCoinId)?->price;
     }
 
-    private function checkDestCoinPrice(mixed $destCoinPrice): void
+    private function checkDestCoinPrice(?int $destCoinPrice): void
     {
-        if (!$destCoinPrice) {
+        if (! $destCoinPrice) {
             $baseResponse = new BaseResponseDto(
                 status: BaseResponseDto::FAILED,
                 code: Response::HTTP_INTERNAL_SERVER_ERROR,
-                messages: [__('error-in-fetching-destination-coin-price')]);
+                messages: [__('orders.error-in-fetching-destination-coin-price')]);
 
-            DB::commit();
             throw new ApiOrderErrorException('', 0, null, $baseResponse);
         }
     }
 
-    private function throwException()
+    private function throwException(array $errorMessages = [])
     {
         $baseResponse = new BaseResponseDto(
             status: BaseResponseDto::FAILED,
             code: Response::HTTP_INTERNAL_SERVER_ERROR,
-            messages: [__('error-occurred-in-creating-an-order')]);
+            messages: [implode(', ', $errorMessages) ?? __('orders.error-occurred-in-creating-an-order')]);
 
         throw new ApiOrderErrorException('', 0, null, $baseResponse);
     }
 
     private function createTrackerId(): string
     {
-        return Str::random(1) . rand(10000, 99999);
+        return Str::random(1).rand(10000, 99999);
+    }
+
+    private function checkSrcCoinPrice(int $srcCoinId, int $srcCoinPrice)
+    {
+        $srcCoin = Coin::query()->find($srcCoinId);
+
+        if ($srcCoin->price != $srcCoinPrice) {
+            $baseResponse = new BaseResponseDto(
+                status: BaseResponseDto::FAILED,
+                code: Response::HTTP_INTERNAL_SERVER_ERROR,
+                messages: [__('orders.coin-price-has-changed')]);
+
+            throw new ApiOrderErrorException('', 0, null, $baseResponse);
+        }
     }
 }
